@@ -15,7 +15,9 @@ const {
 
 // --- Configuration ---
 const PORT = process.env.PORT || 5001;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL; // Email address to receive admin notifications
+const ADMIN_EMAILS = process.env.ADMIN_EMAIL ?
+    process.env.ADMIN_EMAIL.split(',').map(email => email.trim()) :
+    []; // Array of email addresses to receive admin notifications
 
 // --- Initialize Firebase Admin SDK ---
 try {
@@ -112,11 +114,11 @@ app.post('/notify/contact', async (req, res) => {
     const data = req.body.data || req.body;
 
     // Basic validation
-    if (!data.email || !data.message || !ADMIN_EMAIL) {
+    if (!data.email || !data.message || ADMIN_EMAILS.length === 0) {
         console.error('Missing required fields for contact notification:', {
             email: !!data.email,
             message: !!data.message,
-            ADMIN_EMAIL: !!ADMIN_EMAIL
+            ADMIN_EMAILS: ADMIN_EMAILS.length
         });
         return res.status(400).send({ 
             success: false, 
@@ -128,7 +130,7 @@ app.post('/notify/contact', async (req, res) => {
 
     const mailOptions = {
         from: process.env.EMAIL_FROM,
-        to: ADMIN_EMAIL,
+        to: ADMIN_EMAILS.join(','),
         replyTo: data.email,
         subject: subject,
         html: html,
@@ -174,12 +176,12 @@ app.post('/notify/modification', async (req, res) => {
     const data = req.body.data || req.body;
 
     // Basic validation
-    if (!data.email || !data.modifications || !data.planId || !ADMIN_EMAIL) {
+    if (!data.email || !data.modifications || !data.planId || ADMIN_EMAILS.length === 0) {
         console.error('Missing required fields for modification notification:', {
             email: !!data.email,
             modifications: !!data.modifications,
             planId: !!data.planId,
-            ADMIN_EMAIL: !!ADMIN_EMAIL
+            ADMIN_EMAILS: ADMIN_EMAILS.length
         });
         return res.status(400).send({ 
             success: false, 
@@ -191,7 +193,7 @@ app.post('/notify/modification', async (req, res) => {
 
     const mailOptions = {
         from: process.env.EMAIL_FROM,
-        to: ADMIN_EMAIL,
+        to: ADMIN_EMAILS.join(','),
         replyTo: data.email,
         subject: subject,
         html: html,
@@ -242,7 +244,7 @@ app.post('/notify/order', async (req, res) => {
     if (!data.userEmail) missingFields.push('userEmail');
     if (!data.id) missingFields.push('orderId');
     if (!data.paymentMethod) missingFields.push('paymentMethod');
-    if (!ADMIN_EMAIL) missingFields.push('ADMIN_EMAIL configuration');
+    if (ADMIN_EMAILS.length === 0) missingFields.push('ADMIN_EMAIL configuration');
 
     if (missingFields.length > 0) {
         console.error('Missing required fields for order notification:', missingFields);
@@ -269,7 +271,7 @@ app.post('/notify/order', async (req, res) => {
         const adminEmailContent = generateOrderNotificationAdmin(data);
         const adminMailOptions = {
             from: process.env.EMAIL_FROM,
-            to: ADMIN_EMAIL,
+            to: ADMIN_EMAILS.join(','),
             replyTo: data.userEmail,
             subject: adminEmailContent.subject,
             html: adminEmailContent.html,
@@ -324,7 +326,7 @@ app.listen(PORT, () => {
     console.log('\n=== Server Startup Configuration ===');
     console.log(`Server Port: ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Admin Email: ${ADMIN_EMAIL || 'Not Set (Check .env)'}`);
+    console.log(`Admin Emails: ${ADMIN_EMAILS.length ? ADMIN_EMAILS.join(', ') : 'Not Set (Check .env)'}`);
     console.log(`Email From: ${process.env.EMAIL_FROM || 'Not Set (Check .env)'}`);
     console.log(`Email Host: ${process.env.EMAIL_HOST || 'Not Set (Check .env)'}`);
     console.log(`Firebase Initialized: ${admin.app().name ? 'Yes' : 'No'}`);
